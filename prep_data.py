@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 import torch
 import os
+from transformers import DistilBertTokenizer
 
 def get_prepared_data(data_path="data"):
     """
@@ -10,6 +11,9 @@ def get_prepared_data(data_path="data"):
     """
     # 1. Read all CSV files in 'data/' and merge on 'Series_Title'
     df = get_raw_data(data_path)
+
+    # Store Series_Title for tokenization before cleaning
+    titles = df['Series_Title'].tolist()
 
     # 2. Clean & parse 'Runtime' from 'XYZ min' to integer
     df["Runtime"] = df["Runtime"].apply(parse_runtime)
@@ -23,33 +27,54 @@ def get_prepared_data(data_path="data"):
     # 5. Clean 'Released_Year'
     df["Released_Year"] = df["Released_Year"].apply(safe_int)
 
-    # 6. Extract just the first 'Genre' (e.g. 'Action, Crime' → 'Action').
+    # 6. Extract just the first 'Genre'
     df["Genre"] = df["Genre"].apply(lambda x: x.split(",")[0] if isinstance(x, str) else x)
 
     # 7. Convert categorical columns to one-hot vectors
     df = pd.get_dummies(df, columns=["Genre", "Certificate"], dummy_na=True)
 
-    # 8. Drop columns we don't need
+    # 8. Tokenize the text data
+    tokenizer = DistilBertTokenizer.from_pretrained('distilbert-base-uncased')
+    text_encodings = tokenizer(titles, 
+                             truncation=True, 
+                             padding=True,
+                             return_tensors='pt')
+
+    # 9. Drop columns we don't need
     drop_cols = ["Poster_Link", "Series_Title", "Overview", "Director",
                  "Star1", "Star2", "Star3", "Star4"]
     for col in drop_cols:
         if col in df.columns:
             df.drop(columns=[col], inplace=True)
 
-    # 9. Convert *all* remaining columns to numeric (coercing bad values to NaN)
-    df = df.apply(pd.to_numeric, errors="coerce")
-
-    # Optionally, you can drop rows that still contain NaNs after coercion.
-    # If you'd rather fill them, do df.fillna(...) instead.
+    # 10. Convert remaining columns to numeric
+    for col in df.columns:
+        df[col] = pd.to_numeric(df[col], errors='coerce')
+    
+    # Make sure to drop NaN values
     df.dropna(inplace=True)
 
-    # 10. Separate features and target
-    target = df["Gross"].values
-    features = df.drop(columns=["Gross"]).values
+    # Prepare tabular features (all numeric columns except target)
+    numeric_features = df.select_dtypes(include=['float64', 'int64']).drop(columns=['Gross'])
+    tabular_tensor = torch.tensor(numeric_features.values, dtype=torch.float32)
 
-    # 11. Convert to torch tensors
-    features = torch.tensor(features, dtype=torch.float32)
-    target = torch.tensor(target.reshape(-1, 1), dtype=torch.float32)
+    # Normalize the gross values (target) using log transformation
+    # This is common for monetary values which can have large ranges
+    target = torch.log(torch.tensor(df['Gross'].values, dtype=torch.float32))
+
+    # Normalize tabular features using standard scaling
+    tabular_mean = tabular_tensor.mean(dim=0)
+    tabular_std = tabular_tensor.std(dim=0)
+    tabular_tensor = (tabular_tensor - tabular_mean) / (tabular_std + 1e-7)
+
+    # Structure the features
+    features = {
+        "text_input": {
+            "input_ids": text_encodings['input_ids'],
+            "attention_mask": text_encodings['attention_mask']
+        },
+        "tabular_input": tabular_tensor
+    }
 
     return features, target
 

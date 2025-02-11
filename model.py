@@ -28,7 +28,7 @@ class MyModel(nn.Module):
         )
 
         # combines [BERT-embedding + tabular features]
-        #    DistilBERT’s pooled output is typically 768-dim. We pass that plus
+        #    DistilBERT's pooled output is typically 768-dim. We pass that plus
         #    the 32-dim output from tabular_net = 800 dims total
         combined_dim = text_embedding_dim + 32
         self.final_regressor = nn.Sequential(
@@ -61,13 +61,12 @@ class MyModel(nn.Module):
 
 
 def create_model(features):
-
-    tabular_input_dim = features["tabular_input"].shape[1]  # e.g. 10 numeric features
+    tabular_input_dim = features["tabular_input"].shape[1]
     model = MyModel(tabular_input_dim)
-
-    # optimizer
-    optimizer = optim.Adam(model.parameters(), lr=1e-4)
-
+    
+    # Reduce learning rate
+    optimizer = optim.Adam(model.parameters(), lr=1e-5)  # Changed from 1e-4
+    
     return model, optimizer
 
 
