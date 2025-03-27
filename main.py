@@ -1,4 +1,4 @@
-# DO NOT CHANGE ANYTHING IN THIS FILE OR YOU WILL BE DISQUALIFIED
+# DO NOT CHANGE ANYTHING IN THIS FILE
 
 from model import create_model
 from prep_data import get_prepared_data

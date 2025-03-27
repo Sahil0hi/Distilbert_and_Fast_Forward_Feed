@@ -5,21 +5,18 @@ import torch.optim as optim
 # Hugging Face transformer
 from transformers import DistilBertModel
 
-# Define model (feed-forward, two hidden layers)
-# TODO: This is where most of the work will be done. You can change the model architecture,
-#       add more layers, change activation functions, etc.
-
 class MyModel(nn.Module):
-    """using DistilBERT for text embeddings plus
-    a feedforward network for tabular features
-    then combines
+    """
+    Example: DistilBERT for the 'Overview' text + feedforward for tabular features.
+    Combines the two to predict 'Gross'.
     """
     def __init__(self, tabular_input_dim, text_embedding_dim=768):
         super(MyModel, self).__init__()
 
+        # DistilBERT
         self.bert = DistilBertModel.from_pretrained("distilbert-base-uncased")
 
-        # feed-forward for the tabular portion
+        # Small feed-forward for tabular data
         self.tabular_net = nn.Sequential(
             nn.Linear(tabular_input_dim, 64),
             nn.ReLU(),
@@ -27,63 +24,75 @@ class MyModel(nn.Module):
             nn.ReLU()
         )
 
-        # combines [BERT-embedding + tabular features]
-        #    DistilBERT’s pooled output is typically 768-dim. We pass that plus
-        #    the 32-dim output from tabular_net = 800 dims total
+        # Combine text embedding (768) + tabular embedding (32) => 800
         combined_dim = text_embedding_dim + 32
         self.final_regressor = nn.Sequential(
             nn.Linear(combined_dim, 64),
             nn.ReLU(),
-            nn.Linear(64, 1)  # single value for box-office gross
+            nn.Linear(64, 1)  # final output: box-office gross
         )
 
     def forward(self, inputs):
         """
-        Expects 'inputs' to be a dict or tuple containing: text_input: a dict of { "input_ids", "attention_mask" } for DistilBERT
-
-          tabular_input: a float tensor of shape [batch_size, tabular_input_dim]
+        'inputs' should be a dict:
+          {
+            "text_input": {
+                "input_ids": ...,
+                "attention_mask": ...
+            },
+            "tabular_input": ...
+          }
         """
-        text_input = inputs["text_input"]
-        tab_input  = inputs["tabular_input"]
+        text_input = inputs["text_input"]        # { "input_ids": ..., "attention_mask": ... }
+        tab_input  = inputs["tabular_input"]     # numeric features [batch_size, n_tab_features]
 
-        #  DistilBert forward
-        #    Output is a tuple; the last_hidden_state is first element
-        bert_out = self.bert(**text_input)
-        cls_embedding = bert_out.last_hidden_state[:, 0, :]  # shape [batch_size, 768]
+        # 1) DistilBERT forward
+        bert_out = self.bert(**text_input)       # returns BaseModelOutput
+        # Last hidden state shape: [batch_size, seq_len, hidden_size]
+        # We'll take the [CLS] token (index=0) from each sequence
+        cls_embedding = bert_out.last_hidden_state[:, 0, :]  # [batch_size, 768]
 
-        # 2) Tabular forward
-        tab_out = self.tabular_net(tab_input)  # shape [batch_size, 32]
+        # 2) Tabular feed-forward
+        tab_out = self.tabular_net(tab_input)    # [batch_size, 32]
 
-       #combine
-        combined = torch.cat([cls_embedding, tab_out], dim=1)  # [batch_size, 768 + 32] = 800
+        # 3) Concatenate
+        combined = torch.cat([cls_embedding, tab_out], dim=1)  # [batch_size, 800]
+
+        # 4) Final regression
         output = self.final_regressor(combined)  # [batch_size, 1]
         return output
 
 
 def create_model(features):
-
-    tabular_input_dim = features["tabular_input"].shape[1]  # e.g. 10 numeric features
+    """
+    Expects 'features' = {
+      "text_input": {
+         "input_ids": (N, seq_len),
+         "attention_mask": (N, seq_len)
+      },
+      "tabular_input": (N, tabular_features)
+    }
+    """
+    tabular_input_dim = features["tabular_input"].shape[1]
     model = MyModel(tabular_input_dim)
 
-    # optimizer
+    # define optimizer
     optimizer = optim.Adam(model.parameters(), lr=1e-4)
-
     return model, optimizer
 
 
 if __name__ == '__main__':
-    
+    # Simple test with dummy data
     dummy_tab = torch.randn(5, 10)
-    dummy_text_ids = torch.randint(0, 30522, (5, 12))  # random tokens
+    dummy_text_ids = torch.randint(0, 30522, (5, 12))
     dummy_mask = torch.ones(5, 12)
 
-   
     dummy_features = {
         "text_input": {"input_ids": dummy_text_ids, "attention_mask": dummy_mask},
         "tabular_input": dummy_tab
     }
 
     model, optimizer = create_model(dummy_features)
-    out = model(dummy_features)  # forward pass
-    print("Output shape:", out.shape)  # should be [5, 1]
+    out = model(dummy_features)
+    print("Output shape:", out.shape)  # [5, 1]
     print(model)
