@@ -26,6 +26,10 @@ def train_model(model, optimizer, criterion, X_train, y_train, X_val, y_val, tra
         train_loss = criterion(train_output, y_train)
 
         train_loss.backward()
+        # X_train is already a dictionary with the expected structure
+        output = model(X_train)
+        loss = criterion(output.squeeze(), y_train)  # squeeze output to match target shape
+        loss.backward()
         optimizer.step()
 
         if training_updates and epoch % max(1, (num_epochs // 10)) == 0:
@@ -34,6 +38,9 @@ def train_model(model, optimizer, criterion, X_train, y_train, X_val, y_val, tra
                 val_output = model(X_val)
                 val_loss = criterion(val_output, y_val)
             print(f"Epoch {epoch} | Training Loss: {train_loss.item():.4f}, Validation Loss: {val_loss.item():.4f}")
+            output = model(X_val)
+            val_loss = criterion(output.squeeze(), y_val)
+            print(f"Epoch {epoch} | Training Loss: {loss.item()}, Validation Loss: {val_loss.item()}")
 
     return model
 
@@ -56,52 +63,40 @@ if __name__ == '__main__':
     
     print("\nTarget shape:", target.shape if hasattr(target, 'shape') else 'No shape')
 
-    # features is dict:
-    #   {
-    #     "text_input": {
-    #       "input_ids": shape [N, seq_len],
-    #       "attention_mask": shape [N, seq_len]
-    #     },
-    #     "tabular_input": shape [N, tab_feat_dim]
-    #   }
-    # target is shape [N, 1]
+    # Convert target to tensor if it isn't already
+    if not isinstance(target, torch.Tensor):
+        target = torch.tensor(target, dtype=torch.float32)
 
-    # 2. We split each relevant part for train/val
-    X_tab = features["tabular_input"]
-    X_ids = features["text_input"]["input_ids"]
-    X_mask = features["text_input"]["attention_mask"]
+    # Create custom train/val split that preserves dictionary structure
+    indices = list(range(len(target)))
+    train_idx, val_idx = train_test_split(indices, test_size=0.2)
+    
+    # Convert indices to torch tensors for indexing
+    train_idx = torch.tensor(train_idx)
+    val_idx = torch.tensor(val_idx)
 
-    (X_tab_train, X_tab_val,
-     X_ids_train, X_ids_val,
-     X_mask_train, X_mask_val,
-     y_train, y_val) = train_test_split(
-         X_tab,
-         X_ids,
-         X_mask,
-         target,
-         test_size=0.2,
-         random_state=42
-    )
-
-    # 3. Rebuild the dictionary for training & validation
-    train_features = {
+    # Split the features dictionary using proper tensor indexing
+    X_train = {
         "text_input": {
-            "input_ids": X_ids_train,
-            "attention_mask": X_mask_train
+            "input_ids": features["text_input"]["input_ids"].index_select(0, train_idx),
+            "attention_mask": features["text_input"]["attention_mask"].index_select(0, train_idx)
         },
-        "tabular_input": X_tab_train
+        "tabular_input": features["tabular_input"].index_select(0, train_idx)
+    }
+    
+    X_val = {
+        "text_input": {
+            "input_ids": features["text_input"]["input_ids"].index_select(0, val_idx),
+            "attention_mask": features["text_input"]["attention_mask"].index_select(0, val_idx)
+        },
+        "tabular_input": features["tabular_input"].index_select(0, val_idx)
     }
 
-    val_features = {
-        "text_input": {
-            "input_ids": X_ids_val,
-            "attention_mask": X_mask_val
-        },
-        "tabular_input": X_tab_val
-    }
+    y_train = target[train_idx]
+    y_val = target[val_idx]
 
-    # 4. Create model & optimizer
-    model, optimizer = create_model(train_features)
+    # Create model
+    model, optimizer = create_model(X_train)
 
     # 5. Define loss
     criterion = nn.MSELoss()
@@ -119,6 +114,11 @@ if __name__ == '__main__':
 
     print(f"Final Validation Loss: {val_loss:.4f}")
     print(f"Final Validation Accuracy: {val_acc:.4f}")
+    output = model(X_val)
+    loss = criterion(output.squeeze(), y_val)
+    print(f"Final Validation Loss: {loss.item()}")
+    # validation accuracy
+    print(f"Final Validation Accuracy: {1 - loss.item() / y_val.var()}")
 
     # 8. Save model
     torch.save(model, "saved_weights/model.pth")

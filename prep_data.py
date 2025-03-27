@@ -46,7 +46,7 @@ def get_prepared_data(data_path="data"):
 
     # --- 7. We'll keep 'Overview' for text,
     #         but drop other columns we don't need. ---
-    drop_cols = ["Poster_Link", "Series_Title", "Director",
+    drop_cols = ["Poster_Link", "Series_Title", "Director",]
     # 8. Tokenize the text data
     tokenizer = DistilBertTokenizer.from_pretrained('distilbert-base-uncased')
     text_encodings = tokenizer(titles, 
