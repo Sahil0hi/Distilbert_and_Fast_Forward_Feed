@@ -41,6 +41,20 @@ def train_model(model, optimizer, criterion, X_train, y_train, X_val, y_val, tra
 if __name__ == '__main__':
     # 1. Load data from prep_data.py
     features, target = get_prepared_data()
+    
+    # Debug prints
+    print("Features structure:")
+    print(f"Type of features: {type(features)}")
+    for key in features:
+        print(f"\nKey: {key}")
+        if isinstance(features[key], dict):
+            for subkey in features[key]:
+                print(f"  Subkey: {subkey}")
+                print(f"  Shape: {features[key][subkey].shape if hasattr(features[key][subkey], 'shape') else 'No shape'}")
+        else:
+            print(f"Shape: {features[key].shape if hasattr(features[key], 'shape') else 'No shape'}")
+    
+    print("\nTarget shape:", target.shape if hasattr(target, 'shape') else 'No shape')
 
     # features is dict:
     #   {

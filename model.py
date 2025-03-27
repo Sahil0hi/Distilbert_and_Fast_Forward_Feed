@@ -64,20 +64,12 @@ class MyModel(nn.Module):
 
 
 def create_model(features):
-    """
-    Expects 'features' = {
-      "text_input": {
-         "input_ids": (N, seq_len),
-         "attention_mask": (N, seq_len)
-      },
-      "tabular_input": (N, tabular_features)
-    }
-    """
     tabular_input_dim = features["tabular_input"].shape[1]
     model = MyModel(tabular_input_dim)
-
-    # define optimizer
-    optimizer = optim.Adam(model.parameters(), lr=1e-4)
+    
+    # Reduce learning rate
+    optimizer = optim.Adam(model.parameters(), lr=1e-5)  # Changed from 1e-4
+    
     return model, optimizer
 
 
