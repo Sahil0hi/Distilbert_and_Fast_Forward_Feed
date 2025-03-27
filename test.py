@@ -1,19 +1,23 @@
 import torch
 import torch.nn as nn
 from sklearn.model_selection import train_test_split
+from torch.serialization import add_safe_globals
 
 from prep_data import get_prepared_data, get_all_titles
 
 # import model from model.py
-from model import create_model
+from model import create_model, MyModel  # your model class
 
 # import training function from train.py
 from train import train_model
 
+# Add your model class to safe globals
+add_safe_globals([MyModel])
+
 # you can call this function to test a pre-trained model (might be useful while testing)
-def test_saved_model(model_path="saved_weights/model.pth"):
+def test_saved_model(model_path="saved_weights/test_model.pth"):
     # Load model
-    model = torch.load(model_path)
+    model = torch.load(model_path, weights_only=False)
     model.eval()
 
     # Load data

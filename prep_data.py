@@ -41,12 +41,16 @@ def get_prepared_data(data_path="data"):
     target = data["Gross"]
 
     # Convert to numpy arrays
-    features = np.array(features)
+    features = np.array(features, dtype=np.float32)
     target = np.array(target).reshape(-1, 1)
 
     # Convert to torch tensors
+    print("Features dtype:", features.dtype)
+    print("Features shape:", features.shape)
+    print("Sample of features:", features[:5]) 
     features = torch.tensor(features, dtype=torch.float32)
     target = torch.tensor(target, dtype=torch.float32)
+
 
     return features, target
 
