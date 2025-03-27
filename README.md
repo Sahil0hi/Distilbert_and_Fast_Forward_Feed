@@ -1,8 +1,4 @@
-# Template Code for GDG ML Competition
 
-## Description
-This repository contains starter code to use when crafting your solution.
-You should clone it on your machine and work from there.
 
 ## How To Use
 ### The repository contains five main files:
@@ -24,7 +20,6 @@ to return your version of the data if needed.
 5. Run `main.py` and include its output in your submission.
 
 
-## Rules
 - Your model must take the form of a class in `model.py` with the name `MyModel` that extends `torch.nn.Module`.
 - Do not include any data or model weights in your repository on GitHub.
 - Do not modify `main.py` in any way.
