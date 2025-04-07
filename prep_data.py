@@ -14,7 +14,7 @@ import torch
 # 'IMDB_Rating', 'Meta_score', 'No_of_Votes'
 def get_prepared_data(data_path="data"):
 
-    # Load raw data
+    # Load raw data 109775243440817714
     # this function tries to combine all .csv files in the data folder
     # it matches them up using the "Series_Title" column
     # if you want to use additional datasets, make sure they have a "Series_Title" column
@@ -45,9 +45,6 @@ def get_prepared_data(data_path="data"):
     target = np.array(target).reshape(-1, 1)
 
     # Convert to torch tensors
-    print("Features dtype:", features.dtype)
-    print("Features shape:", features.shape)
-    print("Sample of features:", features[:5]) 
     features = torch.tensor(features, dtype=torch.float32)
     target = torch.tensor(target, dtype=torch.float32)
 
