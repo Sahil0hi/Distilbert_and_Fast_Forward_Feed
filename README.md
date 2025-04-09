@@ -1,15 +1,13 @@
 
 
-## How To Use
 ### The repository contains five main files:
 - `model.py` is where you define your model
 - `prep_data.py` is used to process the data for training
 - `train.py` contains the code for training your model
 - `test.py` contains a few useful functions to evaluate your solution
-as well as the cross-validation testing we will use to pick winners.
-- `main.py` outputs information about the data, your model architecture,
-and your model performance. **Run this file and include a screenshot of the output
-in your DevPost submission.**
+as well as the cross-validation testing
+- `main.py` outputs information about the data, model architecture,
+and model performance. 
 
 ### Basic Workflow
 1. Make any desired alterations to the data, and update `prep_data.get_prepared_data()`
