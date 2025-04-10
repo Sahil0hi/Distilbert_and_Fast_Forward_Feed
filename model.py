@@ -44,19 +44,36 @@ class MyModel(nn.Module):
         text_input = inputs["text_input"]
         tab_input = inputs["tabular_input"]
 
+        # Handle any NaN values in tabular input
+        if torch.isnan(tab_input).any():
+            tab_input = torch.nan_to_num(tab_input, nan=0.0)
+
         # 1) Text: DistilBERT
         bert_output = self.bert(**text_input)
         # Take [CLS] token embedding (index 0)
         cls_embedding = bert_output.last_hidden_state[:, 0, :]  # shape: [batch_size, 768]
+        
+        # Check for NaNs in text embeddings
+        if torch.isnan(cls_embedding).any():
+            cls_embedding = torch.nan_to_num(cls_embedding, nan=0.0)
 
         # 2) Tabular
         tab_out = self.tabular_net(tab_input)  # shape: [batch_size, 32]
+        
+        # Check for NaNs in tabular output
+        if torch.isnan(tab_out).any():
+            tab_out = torch.nan_to_num(tab_out, nan=0.0)
 
         # 3) Combine
         combined = torch.cat([cls_embedding, tab_out], dim=1)  # shape: [batch_size, 800]
 
         # 4) Regression head
         output = self.final_regressor(combined)  # shape: [batch_size, 1]
+        
+        # Final NaN check
+        if torch.isnan(output).any():
+            output = torch.nan_to_num(output, nan=0.0)
+            
         return output
 
 

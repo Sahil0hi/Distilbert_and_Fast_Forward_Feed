@@ -27,7 +27,30 @@ def get_raw_data(path="data"):
                 data = data.merge(df, on="Series_Title")
     return data
 
-def get_prepared_data(data_path="data"):
+def get_all_titles(data_path="data"):
+    """
+    Return series of movie titles from the dataset.
+    Args:
+        data_path: Path to the data directory
+    Returns:
+        pandas.Series: Series of movie titles
+    """
+    data = get_raw_data(data_path)
+    return data["Series_Title"]
+
+def get_prepared_data(data_path="data", multimodal_format=True):
+    """
+    Prepare data for training and evaluation.
+    
+    Args:
+        data_path: Path to the data directory
+        multimodal_format: If True, returns features as a dictionary with text_input and tabular_input
+                          If False, returns features as a flat tensor (for main.py compatibility)
+    
+    Returns:
+        features: Features tensor or dictionary
+        target: Target tensor
+    """
     data = get_raw_data(data_path)
 
     # --- Clean text ---
@@ -54,11 +77,11 @@ def get_prepared_data(data_path="data"):
     data = pd.get_dummies(data)
 
     # Features and target
-    features = data.drop(columns=["Gross"])
+    features_df = data.drop(columns=["Gross"])
     target = data["Gross"].values.reshape(-1, 1)
 
     # Scale features
-    features_scaled = scaler.fit_transform(features)
+    features_scaled = scaler.fit_transform(features_df)
 
     # Scale target (Gross) — optional: log transform (removed for scaler simplicity)
     target_scaled = target_scaler.fit_transform(target)
@@ -67,9 +90,13 @@ def get_prepared_data(data_path="data"):
     tabular_features = torch.tensor(features_scaled, dtype=torch.float32)
     target_tensor = torch.tensor(target_scaled, dtype=torch.float32)
 
-    inputs = {
-        "text_input": text_tokens,
-        "tabular_input": tabular_features
-    }
-
-    return inputs, target_tensor
+    if multimodal_format:
+        # Return in multimodal format for our advanced models
+        inputs = {
+            "text_input": text_tokens,
+            "tabular_input": tabular_features
+        }
+        return inputs, target_tensor
+    else:
+        # Return in flat format for main.py compatibility
+        return tabular_features, target_tensor

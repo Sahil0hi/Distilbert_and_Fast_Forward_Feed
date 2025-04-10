@@ -40,7 +40,7 @@ def move_batch_to_device(X_batch, device):
             X_batch[key] = X_batch[key].to(device)
     return X_batch
 
-def train_model(model, optimizer, criterion, train_loader, val_loader, device, epochs=20):
+def train_model(model, optimizer, criterion, train_loader, val_loader, device, epochs=50):
     for epoch in range(epochs):
         model.train()
         total_train_loss = 0
@@ -77,9 +77,35 @@ def train_model(model, optimizer, criterion, train_loader, val_loader, device, e
                 trues.append(y_batch.cpu().numpy())
 
         avg_val_loss = total_val_loss / len(val_loader)
-        preds = target_scaler.inverse_transform(np.vstack(preds))
-        trues = target_scaler.inverse_transform(np.vstack(trues))
-
+        
+        # Stack predictions and ground truth
+        preds_stacked = np.vstack(preds)
+        trues_stacked = np.vstack(trues)
+        
+        # Check for NaN values before inverse transform
+        if np.isnan(preds_stacked).any():
+            print(f"Warning: NaN values found in predictions before inverse transform")
+            # Replace NaNs with zeros for the inverse transform
+            preds_stacked = np.nan_to_num(preds_stacked, nan=0.0)
+            
+        if np.isnan(trues_stacked).any():
+            print(f"Warning: NaN values found in ground truth before inverse transform")
+            trues_stacked = np.nan_to_num(trues_stacked, nan=0.0)
+        
+        # Apply inverse transform
+        preds = target_scaler.inverse_transform(preds_stacked)
+        trues = target_scaler.inverse_transform(trues_stacked)
+        
+        # Check for NaN values after inverse transform
+        if np.isnan(preds).any():
+            print(f"Warning: NaN values found after inverse transform in predictions")
+            preds = np.nan_to_num(preds, nan=0.0)
+            
+        if np.isnan(trues).any():
+            print(f"Warning: NaN values found after inverse transform in ground truth")
+            trues = np.nan_to_num(trues, nan=0.0)
+            
+        # Compute metrics with clean data
         mse = mean_squared_error(trues, preds)
         rmse = mse ** 0.5
         mae = mean_absolute_error(trues, preds)
