@@ -10,51 +10,62 @@ from prep_data import get_prepared_data
 # import model from model.py
 from model import create_model
 
+# Set device to GPU if available
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+print(f"Using device: {device}")
 
-# TODO modify this function however you want to train the model
+# Function to train the model
 def train_model(model, optimizer, criterion, X_train, y_train, X_val, y_val, training_updates=True):
 
-    num_epochs = 2000 # hint: you shouldn't need anywhere near this many epochs
+    num_epochs = 2000  # hint: you shouldn’t need this many epochs
 
     for epoch in range(num_epochs):
+        model.train()
         optimizer.zero_grad()
         output = model(X_train)
         loss = criterion(output, y_train)
         loss.backward()
         optimizer.step()
-        if training_updates and epoch % (num_epochs // 10) == 0: # print training and validation loss 10 times across training
+
+        if training_updates and epoch % (num_epochs // 10) == 0:
+            model.eval()
             with torch.no_grad():
-                output = model(X_val)
-                val_loss = criterion(output, y_val)
+                val_output = model(X_val)
+                val_loss = criterion(val_output, y_val)
                 print(f"Epoch {epoch} | Training Loss: {loss.item()}, Validation Loss: {val_loss.item()}")
 
     return model
 
-
-# example training loop
+# Example training loop
 if __name__ == '__main__':
     # Load data
     features, target = get_prepared_data()
 
-    # create training and validation sets
-    # use 80% of the data for training and 20% for validation
+    # Create training and validation sets
     X_train, X_val, y_train, y_val = train_test_split(features, target, test_size=0.2)
 
-    # Define model (feed-forward, two hidden layers)
-    model, optimizer = create_model(X_train)
+    # Convert data to torch tensors and move to device
+    X_train = torch.tensor(X_train.values, dtype=torch.float32).to(device)
+    y_train = torch.tensor(y_train.values, dtype=torch.float32).unsqueeze(1).to(device)
+    X_val = torch.tensor(X_val.values, dtype=torch.float32).to(device)
+    y_val = torch.tensor(y_val.values, dtype=torch.float32).unsqueeze(1).to(device)
 
-    # Define loss function and optimizer
+    # Define model and move to device
+    model, optimizer = create_model(X_train)
+    model = model.to(device)
+
+    # Define loss function
     criterion = nn.MSELoss()
 
-    # train model
+    # Train model
     model = train_model(model, optimizer, criterion, X_train, y_train, X_val, y_val)
 
-    # basic evaluation (more in test.py)
+    # Basic evaluation
+    model.eval()
     with torch.no_grad():
         output = model(X_val)
         loss = criterion(output, y_val)
         print(f"Final Validation Loss: {loss.item()}")
-        # validation accuracy
         print(f"Final Validation Accuracy: {1 - loss.item() / y_val.var()}")
 
     # Save model
