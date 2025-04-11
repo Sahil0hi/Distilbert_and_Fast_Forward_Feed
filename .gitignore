@@ -7,7 +7,6 @@
 /dataSources/
 /dataSources.local.xml
 /.idea/*
-/data/*
 !data/.gitkeep
 /saved_weights/*
 !saved_weights/.gitkeep
