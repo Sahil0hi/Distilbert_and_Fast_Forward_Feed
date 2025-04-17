@@ -13,14 +13,13 @@ class MyModel(nn.Module):
     def __init__(self, tabular_input_dim, text_embedding_dim=768):
         super(MyModel, self).__init__()
 
-        # Text encoder: DistilBERT
         self.bert = DistilBertModel.from_pretrained("distilbert-base-uncased")
 
         # Tabular feed-forward network
         self.tabular_net = nn.Sequential(
             nn.Linear(tabular_input_dim, 64),
             nn.ReLU(),
-            nn.Dropout(p=0.3),  # ✅ Added dropout for regularization
+            nn.Dropout(p=0.3),  #  dropout for regularization
             nn.Linear(64, 32),
             nn.ReLU()
         )
@@ -30,7 +29,7 @@ class MyModel(nn.Module):
         self.final_regressor = nn.Sequential(
             nn.Linear(combined_dim, 64),
             nn.ReLU(),
-            nn.Dropout(p=0.3),  # ✅ Added dropout
+            nn.Dropout(p=0.3),  # Added dropout
             nn.Linear(64, 1)  # Final output: predicted gross revenue
         )
 
