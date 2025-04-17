@@ -9,5 +9,7 @@
 /.idea/*
 /data/*
 !data/.gitkeep
+# Allow imdb_top_1000.csv in the data folder
+!data/imdb_top_1000.csv
 /saved_weights/*
 !saved_weights/.gitkeep
